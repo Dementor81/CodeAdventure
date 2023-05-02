@@ -1,7 +1,9 @@
 'use strict';
 var stage = null;
-var img = null;
+var imgSleeper = null;
+var imgNails = null;
 var startDeg = 0, endDeg = 45;
+var radius = 400;
 
 $(() => {
 
@@ -12,13 +14,14 @@ $(() => {
     $(myCanvas).attr("height", $(CanvasContainer).height() - 5).attr("width", $(CanvasContainer).width());
     stage = new createjs.Stage(myCanvas);
 
-    img = new Image();
-    img.onload = () => {
+    imgNails = new Image();
+    imgNails.src = "nail.png";
+    imgSleeper = new Image();
+    imgSleeper.src = "sleeper.png";
+
+    setTimeout(() => {
         drawEverything();
-    };
-    img.src = "sleeper.png";
-
-
+    }, 1000);
 
 
 
@@ -26,6 +29,7 @@ $(() => {
 
     $(settings).append(addSlider("startDeg", 0, 360, startDeg, e => { startDeg = parseInt(e.target.value); drawEverything(); }))
     $(settings).append(addSlider("endDeg", 0, 360, endDeg, e => { endDeg = parseInt(e.target.value); drawEverything(); }))
+    $(settings).append(addSlider("radius", 200, 1000, radius, e => { radius = parseInt(e.target.value); drawEverything(); }))
 
 
 });
@@ -38,28 +42,36 @@ function addSlider(text, min, max, value, onChange) {
 
 function drawEverything() {
     stage.removeAllChildren();
-    if (startDeg > endDeg) return;
     const w = myCanvas.width;
     const h = myCanvas.height;
+
+    const image_width = imgSleeper.width * 0.5;
 
     const shape = new createjs.Shape();
     shape.graphics.beginFill("#f00").drawCircle(w / 2, h / 2, 5);
     stage.addChild(shape);
     //DrawImagesInCircle(315, 360, w / 2, h / 2, 300, 5, img);
-    DrawImagesInCircle(startDeg, endDeg, w / 2, h / 2, 300, 5, img);
-    drawArc(0, 45, w / 2, h / 2, 300, "#000", 5);
-    drawArc(0, 45, w / 2 + 60, h / 2, 300 + 60, "#000", 5);
+    DrawImagesInCircle(startDeg, startDeg + 45, w / 2, h / 2, radius, 5, imgSleeper, image_width / -2);
+    DrawImagesInCircle(startDeg, startDeg + 45, w / 2, h / 2, radius, 5, imgNails, image_width / -2 + 20);
+    DrawImagesInCircle(startDeg, startDeg + 45, w / 2, h / 2, radius, 5, imgNails, image_width / 2 - 60);
+
+    drawArc(startDeg, startDeg + 45, w / 2, h / 2, radius, "#000", 10, image_width / -2 + 55);
+    drawArc(startDeg, startDeg + 45, w / 2, h / 2, radius, "#fff", 5, image_width / -2 + 55);
+    //drawArc(startDeg, startDeg + 45, w / 2 + 60, h / 2, radius + 60, "#000", 5);
 
     stage.update();
 }
 
-function drawArc(start_deg, end_deg, center_x, center_y, radius, color, thickness) {
+function drawArc(start_deg, end_deg, center_x, center_y, radius, color, thickness, offset = 0) {
+    let rad = start_deg * (Math.PI / 180);
     const shape = new createjs.Shape();
-    shape.graphics.setStrokeStyle(thickness).beginStroke(color).arc(center_x, center_y, radius, start_deg, (Math.PI / 180) * end_deg);
+    const offsetx = Math.cos(rad) * radius;
+    const offsety = Math.sin(rad) * radius;
+    shape.graphics.setStrokeStyle(thickness).beginStroke(color).arc(center_x - offsetx, center_y - offsety, radius + offset, (Math.PI / 180) *start_deg, (Math.PI / 180) * end_deg);
     stage.addChild(shape);
 }
 
-function DrawImagesInCircle(start_deg, end_deg, center_x, center_y, radius, numOfItems, img) {
+function DrawImagesInCircle(start_deg, end_deg, center_x, center_y, radius, numOfItems, img, offset = 0) {
     let rad = start_deg * (Math.PI / 180);
     const steps = Math.abs(start_deg - end_deg) / numOfItems
 
@@ -70,8 +82,8 @@ function DrawImagesInCircle(start_deg, end_deg, center_x, center_y, radius, numO
         rad = degrees * (Math.PI / 180);
 
         stage.addChild((new createjs.Bitmap(img)).set({
-            x: center_x - offsetx + Math.cos(rad) * radius,
-            y: center_y - offsety + Math.sin(rad) * radius,
+            x: center_x - offsetx + Math.cos(rad) * (radius + offset),
+            y: center_y - offsety + Math.sin(rad) * (radius + offset),
             scale: 0.5,
             rotation: degrees
         }));
