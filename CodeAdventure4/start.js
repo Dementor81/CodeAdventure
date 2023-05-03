@@ -50,23 +50,44 @@ function drawEverything() {
 }
 
 function DrawCircle(center_x, center_y, radius) {
-    let rad = 0;
     let p = calcCircle(0, radius);
     const shape = new createjs.Shape();
     stage.addChild(shape);
     shape.x = center_x;
     shape.y = center_y;
 
-    shape.graphics.setStrokeStyle(1).beginStroke("#000000").mt(p.x, p.y);
+    shape.graphics.setStrokeStyle(1).beginStroke("#000000")//.mt(p.x, p.y);
 
     const inc = 360 / steps;
 
-    for (let degrees = 0; degrees < 360; degrees += inc) {
-        //let p = calcCircle(degrees * (Math.PI / 180), radius + Math.random()*100);
-        let p = calcCircle(degrees * (Math.PI / 180), radius + Math.sin(degrees * 3) * Math.random() * (radius / 3));
-        shape.graphics.lt(p.x, p.y);
-
+    const arr = [];
+    for (let index = 0; index < steps; index++) {
+        arr.push(Math.random());
     }
+
+    let next_i;
+    let smooth;
+    for (let j = 0; j < 5; j++) {
+        for (let i = 0; i < steps ; i++) {
+            next_i = i == steps - 1 ? 0 : i + 1;
+            smooth = (arr[i] - arr[next_i]) / 2
+            arr[i] -= smooth;
+            arr[next_i] += smooth;
+        }
+    }
+
+    
+
+    let index = 0;
+    for (let degrees = 0; degrees < 360; degrees += inc) {
+
+        p = calcCircle(degrees * (Math.PI / 180), radius + (arr[index]-0.5) * (radius));
+        shape.graphics.lt(p.x, p.y);
+        index++;
+    }
+
+
+
     shape.graphics.cp();
 }
 
