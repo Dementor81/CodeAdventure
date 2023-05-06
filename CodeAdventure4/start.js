@@ -1,5 +1,16 @@
 'use strict';
-var stage = null;
+const KEYCODE_ENTER = 13;		//useful keycode
+const KEYCODE_SPACE = 32;		//useful keycode
+const KEYCODE_UP = 38;		//useful keycode
+const KEYCODE_LEFT = 37;		//useful keycode
+const KEYCODE_RIGHT = 39;		//useful keycode
+const KEYCODE_DOWN = 40;		//useful keycode
+const KEYCODE_W = 87;			//useful keycode
+const KEYCODE_A = 65;			//useful keycode
+const KEYCODE_D = 68;
+const KEYCODE_S = 83;
+
+var stage = null, astorid_container = null, player_container = null;
 var time = 400;
 var paused = true;
 const max_radius = 300;
@@ -14,6 +25,16 @@ var asteroid_speed = 30;
 var shapes = [];
 var asteroids = [];
 
+const player = {
+    location: { x: playgroundSize / 2, y: playgroundSize / 2 },
+    movement: new Vector(),
+    rotation: 0
+}
+
+const keys = [];
+
+const imgPlayer = new Image();
+
 $(() => {
 
     const resize = () => {
@@ -24,6 +45,15 @@ $(() => {
     $(window).resize(resize);
     resize();
     stage = new createjs.Stage(myCanvas);
+    stage.x = -(player.location.x - playground.w / 2);
+    stage.y = -(player.location.y - playground.h / 2);
+
+
+
+    stage.addChild(astorid_container = new createjs.Container());
+    stage.addChild(player_container = new createjs.Container());
+
+    imgPlayer.src = "player.png";
 
 
     createSpace();
@@ -41,6 +71,15 @@ $(() => {
             createjs.Ticker.addEventListener("tick", tick);
     });
 
+    document.addEventListener("keydown", e => {
+        if (!keys.includes(e.keyCode))
+            keys.push(e.keyCode);
+    });
+
+    document.addEventListener("keyup", e => {
+        keys.remove(e.keyCode);
+    });
+
 
 });
 
@@ -56,7 +95,7 @@ function addSlider(text, min, max, onChange) {
 }
 
 function createSpace() {
-    stage.removeAllChildren();
+    astorid_container.removeAllChildren();
     shapes = [];
     for (let index = 0; index < 100; index++) {
         shapes.push(createAsteroidShape());
@@ -70,6 +109,20 @@ function createSpace() {
     }
 
     asteroids.forEach(a => drawAsteroid(a));
+
+    player_container.removeAllChildren();
+
+    imgPlayer.addEventListener("load", e => {
+        player.shape = player_container.addChild((new createjs.Bitmap("player.png")).set({
+            x: player.location.x,
+            y: player.location.y,
+            regX: imgPlayer.width / 2,
+            regY: imgPlayer.height / 2,
+            scale: 0.2,
+        }))
+    });
+
+
     stage.update();
 
 }
@@ -116,11 +169,10 @@ function createAsteroid(outside = false) {
         }
         trys++;
     } while (simpleCollision(asteroid) != null && trys < 2000 && (!outside || asteroid.location.x.between(stage.x, stage.x + playground.w) && asteroid.location.y.between(stage.y, stage.y + playground.h)))
-    
+
     if (trys < 2000)
         return asteroid;
-    else    
-    {
+    else {
         console.log("no free space found " + asteroids.length);
         return null
     }
@@ -130,7 +182,7 @@ function drawAsteroid(asteroid) {
     let p;
     const shape = new createjs.Shape();
     shape.asteroid = asteroid;
-    stage.addChild(shape);
+    astorid_container.addChild(shape);
     shape.x = asteroid.location.x;
     shape.y = asteroid.location.y;
     shape.rotation = asteroid.rotation;
@@ -158,19 +210,51 @@ function calcCircle(rad, radius) {
 function tick(event) {
     var delta = event.delta / time;
 
-    stage.children.forEach(c => {
+    astorid_container.children.forEach(c => {
         c.rotation += c.asteroid.rotation * 10 * delta;
         c.x += c.asteroid.movement.x * asteroid_speed * delta;
         c.y += c.asteroid.movement.y * asteroid_speed * delta;
     });
 
-    stage.children.filter(c => c.x.outoff(0, playgroundSize) || c.y.outoff(0, playgroundSize)).forEach(c => {
-        stage.removeChild(c);
+    astorid_container.children.filter(c => c.x.outoff(0, playgroundSize) || c.y.outoff(0, playgroundSize)).forEach(c => {
+        astorid_container.removeChild(c);
         asteroids.remove(c.asteroid);
         let a = createAsteroid(true);
         asteroids.push(a);
         drawAsteroid(a);
     })
+
+    keys.forEach(key => {
+        switch (key) {
+            case KEYCODE_SPACE:
+
+                break;
+            case KEYCODE_A:
+            case KEYCODE_LEFT:
+                player.rotation -= 3
+                break;
+            case KEYCODE_D:
+            case KEYCODE_RIGHT:
+                player.rotation += 3
+                break;
+            case KEYCODE_W:
+            case KEYCODE_UP:
+                player.movement = Vector.sub(player.movement, Vector.rotate(new Vector(0, 1), player.rotation))
+                break;
+            case KEYCODE_W:
+            case KEYCODE_DOWN:
+                player.movement = Vector.add(player.movement, Vector.rotate(new Vector(0, 1), player.rotation))
+                break;
+        }
+    })
+
+    player.shape.x = player.location.x += player.movement.x * 4 * delta * delta;
+    player.shape.y = player.location.y += player.movement.y * 4 * delta * delta;
+    player.shape.rotation = player.rotation;
+
+    stage.x = -(player.shape.x - playground.w / 2);
+    stage.y = -(player.shape.y - playground.h / 2);
+
 
     $(fpsDisplay).text(Math.round(createjs.Ticker.getMeasuredFPS()) + " fps");
     stage.update(event);

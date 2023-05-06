@@ -30,6 +30,10 @@ Array.prototype.remove = function (item) {
     }
 }
 
+function rad(deg) {
+    return deg * (Math.PI / 180);
+}
+
 class Vector {
     x = 0;
     y = 0;
@@ -47,7 +51,12 @@ class Vector {
     }
 
     static sub(v, v2) {
-        return new Vector(v2.x - v.x, v2.y - v.y)
+        return new Vector(v.x - v2.x, v.y - v2.y)
+    }
+
+    static rotate(v, deg) {
+        const r = rad(deg);
+        return new Vector(Math.cos(r) * v.x - Math.sin(r) * v.y, Math.sin(r) * v.x + Math.cos(r) * v.y);
     }
 
     /*  mult(f) {
