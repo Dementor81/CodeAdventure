@@ -184,7 +184,6 @@ class Vector {
 
 
     constructor(x = 0, y = 0) {
-
         this.x = x;
         this.y = y;
         this.length = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
@@ -196,7 +195,6 @@ class Vector {
 
     sub(v) {
         return new Vector(this.x - v.x, this.y - v.y)
-
     }
 
     mult(f) {
@@ -204,7 +202,6 @@ class Vector {
     }
 
     unit() {
-
         return this.mult(1 / this.length);
     }
 }

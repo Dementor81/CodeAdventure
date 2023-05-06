@@ -15,6 +15,39 @@ Number.prototype.is = function (a) {
     return Array.from(arguments).includes(this)
 };
 
-function distance (p1, p2) {
+function distance(p1, p2) {
     return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+
+Math.random2 = function (range) {
+    return Math.random() * range;
+}
+
+class Vector {
+    x = 0;
+    y = 0;
+    length = 0;
+
+
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+        this.length = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
+    }
+
+    static add(v,v2) {
+        return new Vector(v.x + v2.x, v.y + v2.y)
+    }
+
+    static sub(v,v2) {
+        return new Vector(v2.x - v.x, v2.y - v.y)
+    }
+
+   /*  mult(f) {
+        return new Vector(f * this.x, f * this.y)
+    }
+
+    unit() {
+        return this.mult(1 / this.length);
+    } */
 }
