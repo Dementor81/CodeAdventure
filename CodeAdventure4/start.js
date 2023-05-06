@@ -8,6 +8,7 @@ var steps = 80;
 const playgroundSize = 10000;
 
 var count_asteroids = playgroundSize / 30;
+const playground = { w: 0, h: 0 }
 var asteroid_speed = 30;
 
 var shapes = [];
@@ -15,11 +16,13 @@ var asteroids = [];
 
 $(() => {
 
-
-    $(window).resize(() => {
-        $(myCanvas).attr("height", $(CanvasContainer).height() - 5).attr("width", $(CanvasContainer).width());
-    });
-    $(myCanvas).attr("height", $(CanvasContainer).height() - 5).attr("width", $(CanvasContainer).width());
+    const resize = () => {
+        playground.w = $(CanvasContainer).width();
+        playground.h = $(CanvasContainer).height();
+        $(myCanvas).attr("height", playground.h - 5).attr("width", playground.w);
+    }
+    $(window).resize(resize);
+    resize();
     stage = new createjs.Stage(myCanvas);
 
 
@@ -30,6 +33,8 @@ $(() => {
 
     startBtn.addEventListener("click", e => {
         paused = !paused
+        $(fpsDisplay).text("paused");
+
         if (paused)
             createjs.Ticker.removeEventListener("tick", tick);
         else
@@ -58,8 +63,10 @@ function createSpace() {
     }
 
     asteroids = [];
+    let a = null;
     for (let index = 0; index < count_asteroids; index++) {
-        asteroids.push(createAsteroid());
+        a = createAsteroid()
+        if (a) asteroids.push(a);
     }
 
     asteroids.forEach(a => drawAsteroid(a));
@@ -88,10 +95,10 @@ function createAsteroidShape() {
 }
 
 function simpleCollision(asteroid) {
-    return asteroids.find(a => Vector.sub(asteroid.location, a.location).length < asteroid.radius + a.radius)
+    return asteroids.find(a => Vector.sub(asteroid.location, a.location).length < (asteroid.radius + a.radius) * 0.9)
 }
 
-function createAsteroid() {
+function createAsteroid(outside = false) {
     const asteroid = {
         radius: Math.random2(max_radius - min_radius) + min_radius,
         shapeIndex: Math.round(Math.random2(shapes.length - 1)),
@@ -101,13 +108,22 @@ function createAsteroid() {
             y: Math.random() - 0.5
         }
     }
+    let trys = 0;
     do {
         asteroid.location = {
             x: Math.random2(playgroundSize),
             y: Math.random2(playgroundSize)
         }
-    } while (simpleCollision(asteroid) != null)
-    return asteroid;
+        trys++;
+    } while (simpleCollision(asteroid) != null && trys < 2000 && (!outside || asteroid.location.x.between(stage.x, stage.x + playground.w) && asteroid.location.y.between(stage.y, stage.y + playground.h)))
+    
+    if (trys < 2000)
+        return asteroid;
+    else    
+    {
+        console.log("no free space found " + asteroids.length);
+        return null
+    }
 }
 
 function drawAsteroid(asteroid) {
@@ -126,7 +142,6 @@ function drawAsteroid(asteroid) {
     const arr = shapes[asteroid.shapeIndex];
     const r = asteroid.radius;
     let index = 0;
-    console.log(asteroid);
     for (let degrees = 0; degrees < 360; degrees += inc) {
         p = calcCircle(degrees * (Math.PI / 180), r - (arr[index]) * (r));
         shape.graphics.lt(p.x, p.y);
@@ -147,8 +162,15 @@ function tick(event) {
         c.rotation += c.asteroid.rotation * 10 * delta;
         c.x += c.asteroid.movement.x * asteroid_speed * delta;
         c.y += c.asteroid.movement.y * asteroid_speed * delta;
-
     });
+
+    stage.children.filter(c => c.x.outoff(0, playgroundSize) || c.y.outoff(0, playgroundSize)).forEach(c => {
+        stage.removeChild(c);
+        asteroids.remove(c.asteroid);
+        let a = createAsteroid(true);
+        asteroids.push(a);
+        drawAsteroid(a);
+    })
 
     $(fpsDisplay).text(Math.round(createjs.Ticker.getMeasuredFPS()) + " fps");
     stage.update(event);

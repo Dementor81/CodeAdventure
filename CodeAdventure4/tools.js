@@ -20,7 +20,14 @@ function distance(p1, p2) {
 }
 
 Math.random2 = function (range) {
-    return Math.random() * range;
+    return Math.round(Math.random() * range);
+}
+
+Array.prototype.remove = function (item) {
+    const index = this.indexOf(item);
+    if (index > -1) {
+        this.splice(index, 1);
+    }
 }
 
 class Vector {
@@ -35,19 +42,19 @@ class Vector {
         this.length = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
     }
 
-    static add(v,v2) {
+    static add(v, v2) {
         return new Vector(v.x + v2.x, v.y + v2.y)
     }
 
-    static sub(v,v2) {
+    static sub(v, v2) {
         return new Vector(v2.x - v.x, v2.y - v.y)
     }
 
-   /*  mult(f) {
-        return new Vector(f * this.x, f * this.y)
-    }
-
-    unit() {
-        return this.mult(1 / this.length);
-    } */
+    /*  mult(f) {
+         return new Vector(f * this.x, f * this.y)
+     }
+ 
+     unit() {
+         return this.mult(1 / this.length);
+     } */
 }
