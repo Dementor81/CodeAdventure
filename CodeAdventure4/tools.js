@@ -34,6 +34,32 @@ function rad(deg) {
     return deg * (Math.PI / 180);
 }
 
+function getIntersectionPoint(line1, line2) {
+    const denominator = ((line2.end.y - line2.start.y) * (line1.end.x - line1.start.x)) -
+        ((line2.end.x - line2.start.x) * (line1.end.y - line1.start.y));
+
+    // If the denominator is 0, the lines are parallel and don't intersect
+    if (denominator === 0) {
+        return null;
+    }
+
+    const ua = (((line2.end.x - line2.start.x) * (line1.start.y - line2.start.y)) -
+        ((line2.end.y - line2.start.y) * (line1.start.x - line2.start.x))) / denominator;
+    const ub = (((line1.end.x - line1.start.x) * (line1.start.y - line2.start.y)) -
+        ((line1.end.y - line1.start.y) * (line1.start.x - line2.start.x))) / denominator;
+
+    // If ua or ub is less than 0 or greater than 1, the intersection point is outside of the segments
+    if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
+        return null;
+    }
+
+    // Calculate the intersection point
+    const intersectionX = line1.start.x + ua * (line1.end.x - line1.start.x);
+    const intersectionY = line1.start.y + ua * (line1.end.y - line1.start.y);
+
+    return { x: intersectionX, y: intersectionY };
+}
+
 class Vector {
     x = 0;
     y = 0;
