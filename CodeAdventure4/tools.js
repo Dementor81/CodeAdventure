@@ -47,11 +47,15 @@ class Vector {
     }
 
     static add(v, v2) {
-        return new Vector(v.x + v2.x, v.y + v2.y)
+        return new Vector(v.x + v2.x, v.y + v2.y);
     }
 
     static sub(v, v2) {
-        return new Vector(v.x - v2.x, v.y - v2.y)
+        return new Vector(v.x - v2.x, v.y - v2.y);
+    }
+
+    static mult(v, f) {
+        return new Vector(v.x * f, v.y * f);
     }
 
     static rotate(v, deg) {
@@ -67,3 +71,4 @@ class Vector {
          return this.mult(1 / this.length);
      } */
 }
+

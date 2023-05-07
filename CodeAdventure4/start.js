@@ -18,9 +18,9 @@ const min_radius = 50;
 var steps = 80;
 const playgroundSize = 10000;
 
-var count_asteroids = playgroundSize / 30;
+var count_asteroids = playgroundSize / 10;
 const playground = { w: 0, h: 0 }
-var asteroid_speed = 30;
+var asteroid_speed = 10;
 
 var shapes = [];
 var asteroids = [];
@@ -28,7 +28,9 @@ var asteroids = [];
 const player = {
     location: { x: playgroundSize / 2, y: playgroundSize / 2 },
     movement: new Vector(),
-    rotation: 0
+    rotation: 0,
+    toString: function () { return `location: ${Math.round(this.location.x)}/${Math.round(this.location.y)}<br> movement: ${Math.round(this.movement.x)}/${Math.round(this.movement.y)}<br> rotation: ${this.rotation}` }
+
 }
 
 const keys = [];
@@ -55,8 +57,10 @@ $(() => {
 
     imgPlayer.src = "player.png";
 
+    imgPlayer.addEventListener("load", e => {
+        createSpace();
+    });
 
-    createSpace();
 
     $(settings).append(addSlider("count_asteroids", 10, 1000, e => { createSpace(); }));
     $(settings).append(addSlider("asteroid_speed", 10, 1000));
@@ -108,19 +112,19 @@ function createSpace() {
         if (a) asteroids.push(a);
     }
 
+    
+
     asteroids.forEach(a => drawAsteroid(a));
 
     player_container.removeAllChildren();
+    player.shape = player_container.addChild((new createjs.Bitmap("player.png")).set({
+        x: player.location.x,
+        y: player.location.y,
+        regX: imgPlayer.width / 2,
+        regY: imgPlayer.height / 2,
+        scale: 0.2,
+    }))
 
-    imgPlayer.addEventListener("load", e => {
-        player.shape = player_container.addChild((new createjs.Bitmap("player.png")).set({
-            x: player.location.x,
-            y: player.location.y,
-            regX: imgPlayer.width / 2,
-            regY: imgPlayer.height / 2,
-            scale: 0.2,
-        }))
-    });
 
 
     stage.update();
@@ -148,18 +152,14 @@ function createAsteroidShape() {
 }
 
 function simpleCollision(asteroid) {
-    return asteroids.find(a => Vector.sub(asteroid.location, a.location).length < (asteroid.radius + a.radius) * 0.9)
+    return asteroids.find(a => Vector.sub(asteroid.location, a.location).length < (asteroid.radius + a.radius))
 }
 
 function createAsteroid(outside = false) {
     const asteroid = {
         radius: Math.random2(max_radius - min_radius) + min_radius,
         shapeIndex: Math.round(Math.random2(shapes.length - 1)),
-        rotation: Math.random() - 0.5,
-        movement: {
-            x: Math.random() - 0.5,
-            y: Math.random() - 0.5
-        }
+        rotation: Math.random() - 0.5
     }
     let trys = 0;
     do {
@@ -168,14 +168,15 @@ function createAsteroid(outside = false) {
             y: Math.random2(playgroundSize)
         }
         trys++;
-    } while (simpleCollision(asteroid) != null && trys < 2000 && (!outside || asteroid.location.x.between(stage.x, stage.x + playground.w) && asteroid.location.y.between(stage.y, stage.y + playground.h)))
+    } while ((simpleCollision(asteroid) != null || (outside && asteroid.location.x.between(-stage.x, -stage.x + playground.w) && asteroid.location.y.between(-stage.y, -stage.y + playground.h))) && trys < 2000)
 
-    if (trys < 2000)
-        return asteroid;
-    else {
-        console.log("no free space found " + asteroids.length);
-        return null
-    }
+    asteroid.prev_location = { x: asteroid.location.x, y: asteroid.location.y };
+
+    asteroid.location.x += (Math.random() - 0.5) * 10;
+    asteroid.location.y += (Math.random() - 0.5) * 10;
+
+    return trys < 2000 ? asteroid : null;
+
 }
 
 function drawAsteroid(asteroid) {
@@ -195,7 +196,7 @@ function drawAsteroid(asteroid) {
     const r = asteroid.radius;
     let index = 0;
     for (let degrees = 0; degrees < 360; degrees += inc) {
-        p = calcCircle(degrees * (Math.PI / 180), r - (arr[index]) * (r));
+        p = calcCircle(degrees * (Math.PI / 180), r)//- (arr[index]) * (r));
         shape.graphics.lt(p.x, p.y);
         index++;
     }
@@ -209,20 +210,53 @@ function calcCircle(rad, radius) {
 
 function tick(event) {
     var delta = event.delta / time;
-
-    astorid_container.children.forEach(c => {
-        c.rotation += c.asteroid.rotation * 10 * delta;
-        c.x += c.asteroid.movement.x * asteroid_speed * delta;
-        c.y += c.asteroid.movement.y * asteroid_speed * delta;
-    });
-
+    //remove asteroids outside playground
     astorid_container.children.filter(c => c.x.outoff(0, playgroundSize) || c.y.outoff(0, playgroundSize)).forEach(c => {
         astorid_container.removeChild(c);
         asteroids.remove(c.asteroid);
-        let a = createAsteroid(true);
-        asteroids.push(a);
-        drawAsteroid(a);
+
     })
+    //add new asteroids
+    if (asteroids.length < count_asteroids) {
+        let a = createAsteroid(true);
+        if (a) {
+            asteroids.push(a);
+            drawAsteroid(a);
+        }
+    }
+
+    asteroids.forEach((asteroid, i) => {
+        const prev = { x: asteroid.location.x, y: asteroid.location.y };
+        let movement = Vector.sub(asteroid.location, asteroid.prev_location);
+        asteroid.location = Vector.add(asteroid.location, movement);
+
+        for (let index = i + 1; index < asteroids.length; index++) {
+            const other_asteroid = asteroids[index];
+            const distance = Vector.sub(asteroid.location, other_asteroid.location).length;
+            if (distance <= (asteroid.radius + other_asteroid.radius)) {
+                let pushback = { x: asteroid.location.x, y: asteroid.location.y }
+                pushback = Vector.sub(pushback, other_asteroid.location);
+                pushback = Vector.mult(pushback, 1 / distance);
+                //pushback = Vector.mult(pushback, distance - (asteroid.radius + other_asteroid.radius));
+
+
+                asteroid.location = Vector.add(asteroid.location, Vector.mult(pushback, (distance - asteroid.radius) / (distance / 2)));
+                other_asteroid.location = Vector.sub(other_asteroid.location, Vector.mult(pushback, (distance - other_asteroid.radius) / (distance / 2)));
+            }
+        }
+
+
+
+        asteroid.prev_location = prev;
+    });
+
+
+    astorid_container.children.forEach(c => {
+        c.rotation += c.asteroid.rotation * 10 * delta;
+        c.x = c.asteroid.location.x;
+        c.y = c.asteroid.location.y;
+    });
+
 
     keys.forEach(key => {
         switch (key) {
@@ -254,7 +288,9 @@ function tick(event) {
 
     stage.x = -(player.shape.x - playground.w / 2);
     stage.y = -(player.shape.y - playground.h / 2);
-
+    $(stats).empty()
+    $(stats).append("player:<br>" + player.toString());
+    $(stats).append(`<br>asteroids: ${asteroids.length}/${Math.round(count_asteroids)}`);
 
     $(fpsDisplay).text(Math.round(createjs.Ticker.getMeasuredFPS()) + " fps");
     stage.update(event);
