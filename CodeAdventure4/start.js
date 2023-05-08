@@ -137,7 +137,7 @@ function createSpace() {
         y: player.location.y,
         regX: imgPlayer.width / 2,
         regY: imgPlayer.height / 2,
-        scale: 0.2,
+        scale: 0.15,
     }))
 
 
@@ -178,14 +178,14 @@ function advancedCollision(asteroid, other_asteroid) {
 
     let next_i, p1, p2, border;
     const inc = 360 / steps;
-    p1 = calcCircle(0, other_asteroid.radius - (other_arr[0]) * (other_asteroid.radius));
+    p1 = calcCircle(other_asteroid.rotation, other_asteroid.radius - (other_arr[0]) * (other_asteroid.radius));
     p1.x += other_asteroid.location.x;
     p1.y += other_asteroid.location.y;
 
     for (let i = 0; i < steps; i++) {
         next_i = i == steps - 1 ? 0 : i + 1;
 
-        p2 = calcCircle(inc * next_i * (Math.PI / 180), other_asteroid.radius - (other_arr[next_i]) * (other_asteroid.radius));
+        p2 = calcCircle((other_asteroid.rotation + inc * next_i) * (Math.PI / 180), other_asteroid.radius - (other_arr[next_i]) * (other_asteroid.radius));
         p2.x += other_asteroid.location.x;
         p2.y += other_asteroid.location.y;
 
@@ -194,13 +194,13 @@ function advancedCollision(asteroid, other_asteroid) {
         p1 = p2;
     }
 
-    p1 = calcCircle(0, asteroid.radius - (arr[0]) * (asteroid.radius));
+    p1 = calcCircle(asteroid.rotation, asteroid.radius - (arr[0]) * (asteroid.radius));
     p1.x += asteroid.location.x;
     p1.y += asteroid.location.y;
     for (let i = 0; i < steps; i++) {
         next_i = i == steps - 1 ? 0 : i + 1;
 
-        p2 = calcCircle(inc * next_i * (Math.PI / 180), asteroid.radius - (arr[next_i]) * (asteroid.radius));
+        p2 = calcCircle((asteroid.rotation + inc * next_i) * (Math.PI / 180), asteroid.radius - (arr[next_i]) * (asteroid.radius));
         p2.x += asteroid.location.x;
         p2.y += asteroid.location.y;
         border = { start: p1, end: p2 };
@@ -220,7 +220,8 @@ function createAsteroid(outside = false) {
     const asteroid = {
         radius: Math.random2(max_radius - min_radius) + min_radius,
         shapeIndex: Math.round(Math.random2(shapes.length - 1)),
-        rotation: Math.random() - 0.5
+        rotation_speed: (Math.random() - 0.5),
+        rotation: 0
     }
     let trys = 0;
     do {
@@ -233,8 +234,8 @@ function createAsteroid(outside = false) {
 
     asteroid.prev_location = { x: asteroid.location.x, y: asteroid.location.y };
 
-    asteroid.location.x += (Math.random() - 0.5) * 10;
-    asteroid.location.y += (Math.random() - 0.5) * 10;
+    asteroid.location.x += (Math.random() - 0.5) * (max_radius / asteroid.radius);
+    asteroid.location.y += (Math.random() - 0.5) * (max_radius / asteroid.radius);
 
     return trys < 2000 ? asteroid : null;
 
@@ -286,29 +287,41 @@ function tick(event) {
         }
     }
 
+    const window = {
+        x1: -stage.x - 500,
+        y1: -stage.y - 500
+    };
+    window.x2 = window.x1 + playground.w + 1000;
+    window.y2 = window.y1 + playground.h + 1000;
+
+
+
     asteroids.forEach((asteroid, i) => {
         const prev = { x: asteroid.location.x, y: asteroid.location.y };
         let movement = Vector.sub(asteroid.location, asteroid.prev_location);
         asteroid.location = Vector.add(asteroid.location, movement);
+        asteroid.rotation += (asteroid.rotation_speed * delta) % 360;
 
-        for (let index = i + 1; index < asteroids.length; index++) {
-            const other_asteroid = asteroids[index];
-            const distance = Vector.sub(asteroid.location, other_asteroid.location).length;
-            if (distance <= (asteroid.radius + other_asteroid.radius) && advancedCollision(asteroid, other_asteroid)) {
-                let pushback = { x: asteroid.location.x, y: asteroid.location.y }
-                pushback = Vector.sub(pushback, other_asteroid.location);
-                pushback = Vector.mult(pushback, 1 / distance);
-                pushback = Vector.mult(pushback, Math.min(20, (movement.length + Vector.sub(other_asteroid.location, other_asteroid.prev_location).length) / 2));
-                //pushback = Vector.mult(pushback, distance - (asteroid.radius + other_asteroid.radius));
+        if (asteroid.location.x.between(window.x1, window.x2) && asteroid.location.y.between(window.y1, window.y2))
+            for (let index = i + 1; index < asteroids.length; index++) {
+
+                const other_asteroid = asteroids[index];
+                const distance = Vector.sub(asteroid.location, other_asteroid.location).length;
+                if (distance <= (asteroid.radius + other_asteroid.radius) * 0.9 && advancedCollision(asteroid, other_asteroid)) {
+                    let pushback = { x: asteroid.location.x, y: asteroid.location.y }
+                    pushback = Vector.sub(pushback, other_asteroid.location);
+                    pushback = Vector.mult(pushback, 1 / distance);
+                    pushback = Vector.mult(pushback, Math.min(20, (movement.length + Vector.sub(other_asteroid.location, other_asteroid.prev_location).length) / 2));
+                    //pushback = Vector.mult(pushback, distance - (asteroid.radius + other_asteroid.radius));
 
 
-                asteroid.location = Vector.add(asteroid.locationVector.mult(pushback, Math.min(1, other_asteroid.radius / asteroid.radius)));
-                other_asteroid.location = Vector.sub(other_asteroid.location, Vector.mult(pushback, Math.min(1, asteroid.radius / other_asteroid.radius)));
+                    /* asteroid.location = Vector.add(asteroid.locationVector.mult(pushback, Math.min(1, other_asteroid.radius / asteroid.radius)));
+                    other_asteroid.location = Vector.sub(other_asteroid.location, Vector.mult(pushback, Math.min(1, asteroid.radius / other_asteroid.radius))); */
 
-                /* asteroid.location = Vector.add(asteroid.location, pushback);
-                other_asteroid.location = Vector.sub(other_asteroid.location, pushback); */
+                    asteroid.location = Vector.add(asteroid.location, pushback);
+                    other_asteroid.location = Vector.sub(other_asteroid.location, pushback);
+                }
             }
-        }
 
 
 
@@ -317,7 +330,7 @@ function tick(event) {
 
 
     astorid_container.children.forEach(c => {
-        c.rotation += c.asteroid.rotation * 10 * delta;
+        c.rotation = c.asteroid.rotation;
         c.x = c.asteroid.location.x;
         c.y = c.asteroid.location.y;
     });
@@ -340,7 +353,7 @@ function tick(event) {
             case KEYCODE_UP:
                 player.movement = Vector.sub(player.movement, Vector.rotate(new Vector(0, 1), player.rotation))
                 break;
-            case KEYCODE_W:
+            case KEYCODE_S:
             case KEYCODE_DOWN:
                 player.movement = Vector.add(player.movement, Vector.rotate(new Vector(0, 1), player.rotation))
                 break;
