@@ -89,12 +89,20 @@ class Vector {
         return new Vector(Math.cos(r) * v.x - Math.sin(r) * v.y, Math.sin(r) * v.x + Math.cos(r) * v.y);
     }
 
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y;
+    }
+
     /*  mult(f) {
          return new Vector(f * this.x, f * this.y)
-     }
- 
-     unit() {
-         return this.mult(1 / this.length);
-     } */
+     }*/
+
+    abs() {
+        return new Vector(Math.abs(this.x), Math.abs(this.y));
+    }
+
+    unit() {
+        return Vector.mult(this, 1 / this.length);
+    }
 }
 
