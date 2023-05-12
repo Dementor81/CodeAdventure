@@ -15,9 +15,9 @@ var time = 400;
 var paused = true;
 const max_radius = 200;
 const min_radius = 50;
-var steps = 30;
-var playgroundSize = 1000;
-var count_asteroids = 2//playgroundSize / 10;
+var steps = 15;
+var playgroundSize = 10000;
+var count_asteroids = playgroundSize / 10;
 const playground = { w: 0, h: 0 }
 var asteroid_speed = 10;
 
@@ -50,7 +50,7 @@ $(() => {
     imgPlayer.src = "player.png";
 
 
-    $(settings).append(addSlider("count_asteroids", 2, 1000));
+    $(settings).append(addSlider("count_asteroids", 2, 10000));
     $(settings).append(addSlider("playgroundSize", 1000, 100000));
 
     startBtn.addEventListener("click", e => {
@@ -160,7 +160,7 @@ function createSpace() {
         motion: new Vector(0, 0)
     }) */
 
-/*     asteroids.push({
+    /* asteroids.push({
         radius: 50,
         shapeIndex: 1,
         rotation_speed: 0,
@@ -174,7 +174,7 @@ function createSpace() {
         shapeIndex: 2,
         rotation_speed: 0,
         rotation: 0,
-        location: { x: 550, y: 900},
+        location: { x: 550, y: 900 },
         motion: new Vector(0, 0)
     }) */
 
@@ -200,8 +200,8 @@ function createAsteroidShape() {
     const arr = [];
 
     for (let index = 0; index < steps; index++) {
-        //arr.push(Math.random());
-        arr.push(0.1);
+        arr.push(Math.random());
+        //arr.push(0.0);
     }
 
     let next_i;
@@ -386,23 +386,37 @@ function tick(event) {
                     const dot = Vector.dot(relative, distance_vector.unit());
 
                     if (dot < 0 && advancedCollision(asteroid, other_asteroid)) {
-                        let pushback = Vector.sub(other_asteroid.location, asteroid.location).unit();
+                        movingCircleCollision(asteroid, other_asteroid);
+
+                        /* let pushback = Vector.sub(other_asteroid.location, asteroid.location).unit();
 
                         const ma = asteroid.radius,
                             mb = other_asteroid.radius,
                             vbf = calcCollision(ma, mb, asteroid.motion.length, other_asteroid.motion.length),
-                            vaf = calcCollision(mb, ma, other_asteroid.motion.length, asteroid.motion.length)
+                            vbfx = calcCollision(ma, mb, asteroid.motion.x, other_asteroid.motion.x),
+                            vbfy = calcCollision(ma, mb, asteroid.motion.y, other_asteroid.motion.y),
+                            vaf = calcCollision(mb, ma, other_asteroid.motion.length, asteroid.motion.length);
 
 
-                        const pushback_b = Vector.mult(pushback , vbf );
-                        const pushback_a = Vector.mult(pushback , vaf );
 
+                        /* asteroid.motion = Vector.mult(Vector.sub(asteroid.motion, pushback).unit(), vbf);
+                        other_asteroid.motion = Vector.mult(Vector.add(other_asteroid.motion, pushback).unit(), vaf); */
+
+                        /* asteroid.motion = Vector.mirror(asteroid.motion, pushback).unit();
+                        asteroid.motion.x = asteroid.motion.x * vbfx;
+                        asteroid.motion.y = asteroid.motion.y * vbfy;
+                        other_asteroid.motion = Vector.mult(Vector.add(other_asteroid.motion, pushback).unit(), vaf); */
+
+                        /* 
+                                                const pushback_b = Vector.mult(pushback, vbf);
+                                                const pushback_a = Vector.mult(pushback, vaf);
                         
-
-
-                        asteroid.motion = Vector.sub(asteroid.motion,pushback_b);
-
-                        other_asteroid.motion = Vector.add(other_asteroid.motion,pushback_a); 
+                        
+                        
+                        
+                                                asteroid.motion = Vector.sub(asteroid.motion, pushback_b);
+                        
+                                                other_asteroid.motion = Vector.add(other_asteroid.motion, pushback_a); */
 
                         /* const result = calcCollisionGPT2(asteroid.radius,other_asteroid.radius,asteroid.motion,other_asteroid.motion);
                         asteroid.motion = result[0];

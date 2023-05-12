@@ -93,81 +93,131 @@ class Vector {
         return v1.x * v2.x + v1.y * v2.y;
     }
 
+    static mirror(d, n) {
+
+        return Vector.sub(d, Vector.mult(n, 2 * Vector.dot(d, n)));
+    }
+
     unit() {
-        return Vector.mult(this, 1 / this.length);
+        return this.length == 0 ? new Vector(0, 0) : Vector.mult(this, 1 / this.length);
     }
 }
 
-function calcCollisionGPT1(m1, m2, v1i, v2i) {
-    // Define the objects' initial velocities and masses
+function movingCircleCollision(c1, c2) {
 
-    // Calculate the initial momentum of each object
-    let p1i = { x: m1 * v1i.x, y: m1 * v1i.y }; // momentum of object 1 in x and y directions
-    let p2i = { x: m2 * v2i.x, y: m2 * v2i.y }; // momentum of object 2 in x and y directions
 
-    // Calculate the total momentum of the system before the collision
-    let ptoti = { x: p1i.x + p2i.x, y: p1i.y + p2i.y }; // total momentum of the system in x and y directions
 
-    // Apply the conservation of momentum principle to find the total momentum of the system after the collision
-    let ptotf = { x: ptoti.x, y: ptoti.y }; // total momentum of the system after the collision in x and y directions
+    let combinedRadii, overlap, xSide, ySide,
+        //`s` refers to the distance vector between the circles
+        s = {},
+        p1A = {},
+        p1B = {},
+        p2A = {},
+        p2B = {};
 
-    // Calculate the final velocities of both objects
-    let v1f = { x: (ptotf.x - p2i.x) / m1, y: (ptotf.y - p2i.y) / m1 }; // final velocity of object 1 in x and y directions
-    let v2f = { x: (ptotf.x - p1i.x) / m2, y: (ptotf.y - p1i.y) / m2 }; // final velocity of object 2 in x and y directions
 
-    // Check if kinetic energy is conserved
-    let kei = 0.5 * m1 * (v1i.x ** 2 + v1i.y ** 2) + 0.5 * m2 * (v2i.x ** 2 + v2i.y ** 2); // initial kinetic energy of the system
-    let kef = 0.5 * m1 * (v1f.x ** 2 + v1f.y ** 2) + 0.5 * m2 * (v2f.x ** 2 + v2f.y ** 2); // final kinetic energy of the system
+    s.vx = c2.location.x - c1.location.x;
+    s.vy = c2.location.y - c1.location.y;
 
-    if (kei === kef) {
-        console.log("Kinetic energy is conserved");
-    } else {
-        console.log("Kinetic energy is not conserved");
-    }
 
-    return [v1f, v2f];
+    //Find the distance between the circles by calculating
+    //the vector's length (how long the vector is)
+    s.length = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+
+    //Add together the circles' combined half-widths
+    combinedRadii = c1.radius + c2.radius;
+
+
+
+    //Find the amount of overlap between the circles
+    overlap = combinedRadii - s.length;
+
+    //Add some "quantum padding" to the overlap
+    overlap += 0.3;
+
+    //Normalize the vector.
+    //These numbers tell us the direction of the collision
+    s.dx = s.vx / s.length;
+    s.dy = s.vy / s.length;
+
+    //Find the collision vector.
+    //Divide it in half to share between the circles, and make it absolute
+    s.vxHalf = Math.abs(s.dx * overlap / 2);
+    s.vyHalf = Math.abs(s.dy * overlap / 2);
+
+    //Find the side that the collision is occurring on
+    (c1.location.x > c2.location.x) ? xSide = 1 : xSide = -1;
+    (c1.location.y > c2.location.y) ? ySide = 1 : ySide = -1;
+
+    //Move c1 out of the collision by multiplying
+    //the overlap with the normalized vector and adding it to
+    //the circles' positions
+  /*   c1.location.x = c1.location.x + (s.vxHalf * xSide);
+    c1.location.y = c1.location.y + (s.vyHalf * ySide);
+
+    //Move c2 out of the collision
+    c2.location.x = c2.location.x + (s.vxHalf * -xSide);
+    c2.location.y = c2.location.y + (s.vyHalf * -ySide); */
+
+    //1. Calculate the collision surface's properties
+
+    //Find the surface vector's left normal
+    s.lx = s.vy;
+    s.ly = -s.vx;
+
+    //2. Bounce c1 off the surface (s)
+
+    //Find the dot product between c1 and the surface
+    let dp1 = c1.motion.x * s.dx + c1.motion.y * s.dy;
+
+    //Project c1's velocity onto the collision surface
+    p1A.x = dp1 * s.dx;
+    p1A.y = dp1 * s.dy;
+
+    //Find the dot product of c1 and the surface's left normal (s.lx and s.ly)
+    let dp2 = c1.motion.x * (s.lx / s.length) + c1.motion.y * (s.ly / s.length);
+
+    //Project the c1's velocity onto the surface's left normal
+    p1B.x = dp2 * (s.lx / s.length);
+    p1B.y = dp2 * (s.ly / s.length);
+
+    //3. Bounce c2 off the surface (s)
+
+    //Find the dot product between c2 and the surface
+    let dp3 = c2.motion.x * s.dx + c2.motion.y * s.dy;
+
+    //Project c2's velocity onto the collision surface
+    p2A.x = dp3 * s.dx;
+    p2A.y = dp3 * s.dy;
+
+    //Find the dot product of c2 and the surface's left normal (s.lx and s.ly)
+    let dp4 = c2.motion.x * (s.lx / s.length) + c2.motion.y * (s.ly / s.length);
+
+    //Project c2's velocity onto the surface's left normal
+    p2B.x = dp4 * (s.lx / s.length);
+    p2B.y = dp4 * (s.ly / s.length);
+
+    //4. Calculate the bounce vectors
+
+    //Bounce c1
+    //using p1B and p2A
+    c1.bounce = {};
+    c1.bounce.x = p1B.x + p2A.x;
+    c1.bounce.y = p1B.y + p2A.y;
+
+    //Bounce c2
+    //using p1A and p2B
+    c2.bounce = {};
+    c2.bounce.x = p1A.x + p2B.x;
+    c2.bounce.y = p1A.y + p2B.y;
+
+    //Add the bounce vector to the circles' velocity
+    //and add mass if the circle has a mass property
+    c1.motion.x = (c1.bounce.x / (c1.radius/min_radius))*2;
+    c1.motion.y = (c1.bounce.y / (c1.radius/min_radius))*2;
+    c2.motion.x = (c2.bounce.x / (c2.radius/min_radius))*2;
+    c2.motion.y = (c2.bounce.y / (c2.radius/min_radius))*2;
+
 }
 
-function calcCollisionGPT2(m1, m2, v1i, v2i) {
-    // Define the initial parameters for the first object
 
-    let v1x = v1i.x; // initial velocity of object 1 in the x direction
-    let v1y = v1i.y; // initial velocity of object 1 in the y direction
-    let px1 = m1 * v1x; // initial momentum of object 1 in the x direction
-    let py1 = m1 * v1y; // initial momentum of object 1 in the y direction
-
-    // Define the initial parameters for the second object
-
-    let v2x = v2i.x; // initial velocity of object 2 in the x direction
-    let v2y = v2i.y; // initial velocity of object 2 in the y direction
-    let px2 = m2 * v2x; // initial momentum of object 2 in the x direction
-    let py2 = m2 * v2y; // initial momentum of object 2 in the y direction
-
-    // Calculate the total momentum and kinetic energy before the collision
-    let pxtotal = px1 + px2; // total momentum in the x direction
-    let pytotal = py1 + py2; // total momentum in the y direction
-    let Ktotal = 0.5 * m1 * (v1x ** 2 + v1y ** 2) + 0.5 * m2 * (v2x ** 2 + v2y ** 2); // total kinetic energy
-
-    // Calculate the final velocities after the collision
-    let v1xf = (pxtotal - m2 * (v1x - v2x)) / (m1 + m2); // final velocity of object 1 in the x direction
-    let v1yf = (pytotal - m2 * (v1y - v2y)) / (m1 + m2); // final velocity of object 1 in the y direction
-    let v2xf = (pxtotal - m1 * (v2x - v1x)) / (m1 + m2); // final velocity of object 2 in the x direction
-    let v2yf = (pytotal - m1 * (v2y - v1y)) / (m1 + m2); // final velocity of object 2 in the y direction
-
-    // Calculate the total kinetic energy after the collision
-    let Ktotal_f = 0.5 * m1 * (v1xf ** 2 + v1yf ** 2) + 0.5 * m2 * (v2xf ** 2 + v2yf ** 2);
-
-    // Check if momentum and kinetic energy are conserved
-    if (Math.abs(pxtotal - (m1 * v1xf + m2 * v2xf)) < 0.0001 && Math.abs(pytotal - (m1 * v1yf + m2 * v2yf)) < 0.0001 && Math.abs(Ktotal - Ktotal_f) < 0.0001) {
-        console.log("Momentum and kinetic energy are conserved.");
-    } else {
-        console.log("Momentum and kinetic energy are not conserved.");
-    }
-
-    // Output the final velocities
-    console.log("Final velocity of object 1: (" + v1xf + ", " + v1yf + ")");
-    console.log("Final velocity of object 2: (" + v2xf + ", " + v2yf + ")");
-
-
-    return [{ x: v1xf, y: v1yf }, { x: v2xf, y: v2yf }];
-}
