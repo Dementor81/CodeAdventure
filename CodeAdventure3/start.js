@@ -29,8 +29,8 @@ $(() => {
 
     schwellenHöhe = imgSleeper.width * TRACK_SCALE;
     schwellenBreite = imgSleeper.height * TRACK_SCALE;
-    schwellenGap = schwellenBreite * 1.4;
-    rail_offset = (schwellenHöhe ) / 5;
+    schwellenGap = schwellenBreite * 1;
+    rail_offset = schwellenHöhe / 5;
 
     setTimeout(() => {
         drawEverything();
@@ -89,7 +89,7 @@ function drawEverything() {
     drawArc(45, { x: 100, y: 100 }, { x: 170, y: 65 }, "#000", 2); */
 
     drawCurvedRail({ x: 300, y: 300 }, 0, 45);
-     drawCurvedRail({ x: 300, y: 200 }, 0, -45);
+    drawCurvedRail({ x: 300, y: 200 }, 0, -45);
     /*drawCurvedRail({ x: 500, y: 300 }, 45, 0);
     drawCurvedRail({ x: 500, y: 200 }, -45, 0); */
 
@@ -113,11 +113,9 @@ function drawCurvedRail(location, startDeg, endDeg) {
         y1 = location.y + grid / 2;
         clockwise = 1;
     }
-DrawImagesInCircle(45, clockwise, { x: location.x - grid / 2, y: y1 }, { x: location.x + grid / 2, y: y2 }, 10, imgSleeper, -schwellenHöhe / 2);
+    DrawImagesInCircle(45, clockwise, { x: location.x - grid / 2, y: y1 }, { x: location.x + grid / 2, y: y2 }, imgSleeper, -schwellenHöhe / 2);
     drawArc(45, clockwise, { x: location.x - grid / 2, y: y1 }, { x: location.x + grid / 2, y: y2 }, "#000", 2, -schwellenHöhe / 2 + rail_offset);
     drawArc(45, clockwise, { x: location.x - grid / 2, y: y1 }, { x: location.x + grid / 2, y: y2 }, "#000", 2, schwellenHöhe / 2 - rail_offset);
-
-    
 }
 
 function drawArc(deg, clockwise, p1, p2, color, thickness, offset = 0) {
@@ -137,8 +135,8 @@ function drawArc(deg, clockwise, p1, p2, color, thickness, offset = 0) {
     // Calculate the angle between the x-axis and the line connecting the two points
     let lineAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    //let pointC = geometry.perpendicular(midpoint, lineAngle, h);
-    let pointC = perpendicular2(p1, p2, h);
+    //1st calculate the midpoint between p1 and p2, then calc a perpendicular point by adding 90° to the lineAngle with h as heigth above the midpoint.
+    let pointC = { x: (p1.x + p2.x) / 2 - Math.cos(lineAngle + Math.PI / 2) * h, y: (p1.y + p2.y) / 2 - Math.sin(lineAngle + Math.PI / 2) * h };
     //drawPoint(pointC, "pC", "#000", 3);
 
     //drawLine(midpoint, pointC);
@@ -156,10 +154,9 @@ function drawArc(deg, clockwise, p1, p2, color, thickness, offset = 0) {
     stage.addChild(shape);
 }
 
-function DrawImagesInCircle(deg, clockwise, p1, p2, numOfItems, img, offset = 0) {
+function DrawImagesInCircle(deg, clockwise, p1, p2, img, offset = 0) {
     // Define the desired angle in radians
     let desiredAngle = deg2rad(deg);
-    const steps = desiredAngle / numOfItems;
 
     // Calculate the distance between the two points
     let distance = geometry.distance(p1, p2);
@@ -167,25 +164,29 @@ function DrawImagesInCircle(deg, clockwise, p1, p2, numOfItems, img, offset = 0)
     // Calculate the radius of the circle
     let radius = distance / 2 / Math.sin(desiredAngle / 2);
 
+    let length = 2 * Math.PI * radius * (deg / 360);
+    const step = desiredAngle / Math.floor(length / (schwellenGap + schwellenBreite));
+    const startOffset = desiredAngle / Math.floor(length / schwellenGap) / 2;
+
     let h = Math.sqrt(Math.pow(radius, 2) - Math.pow(distance / 2, 2));
 
     if (clockwise) h *= -1;
-   
+
     // Calculate the angle between the x-axis and the line connecting the two points
     let lineAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    //let pointC = geometry.perpendicular(midpoint, lineAngle, h);
-    let pointC = perpendicular2(p1, p2, h);
+    //1st calculate the midpoint between p1 and p2, then calc a perpendicular point by adding 90° to the lineAngle with h as heigth above the midpoint.
+    let pointC = { x: (p1.x + p2.x) / 2 - Math.cos(lineAngle + Math.PI / 2) * h, y: (p1.y + p2.y) / 2 - Math.sin(lineAngle + Math.PI / 2) * h };
     //drawPoint(pointC, "pC", "#000", 3);
 
     //drawLine(midpoint, pointC);
 
     // Calculate the starting and ending angles for drawing the circular curve
     if (!clockwise) lineAngle += Math.PI;
-    let startAngle = lineAngle - desiredAngle / 2 - Math.PI / 2;
-    let endAngle = desiredAngle + startAngle;
+    let startAngle = lineAngle - desiredAngle / 2 - Math.PI / 2 + startOffset;
+    let endAngle = desiredAngle + startAngle - step;
 
-    for (let rad = startAngle; rad < endAngle; rad += steps) {
+    for (let rad = startAngle; rad < endAngle; rad += step) {
         stage.addChild(
             new createjs.Bitmap(img).set({
                 x: pointC.x + Math.cos(rad) * (radius + offset),
@@ -195,43 +196,6 @@ function DrawImagesInCircle(deg, clockwise, p1, p2, numOfItems, img, offset = 0)
             })
         );
     }
-}
-
-/* function DrawImagesInCircle(start_deg, end_deg, center_x, center_y, radius, numOfItems, img, offset = 0) {
-    let rad = start_deg * (Math.PI / 180);
-    const steps = Math.abs(start_deg - end_deg) / numOfItems;
-
-    const offsetx = Math.cos(rad) * radius;
-    const offsety = Math.sin(rad) * radius;
-
-    for (let degrees = start_deg; degrees < end_deg; degrees += steps) {
-        rad = degrees * (Math.PI / 180);
-
-        stage.addChild(
-            new createjs.Bitmap(img).set({
-                x: center_x - offsetx + Math.cos(rad) * (radius + offset),
-                y: center_y - offsety + Math.sin(rad) * (radius + offset),
-                scale: 0.5,
-                rotation: degrees,
-            })
-        );
-    }
-    stage.update();
-} */
-
-function perpendicular2(p1, p2, h) {
-    let midpoint = {
-        x: (p1.x + p2.x) / 2,
-        y: (p1.y + p2.y) / 2,
-    };
-
-    let lineAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    lineAngle += Math.PI / 2;
-
-    let x = Math.cos(lineAngle) * h;
-    let y = Math.sin(lineAngle) * h;
-
-    return { x: midpoint.x - x, y: midpoint.y - y };
 }
 
 function drawLine(p1, p2, color = "#000", size = 1) {
