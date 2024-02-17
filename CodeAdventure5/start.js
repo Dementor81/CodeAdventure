@@ -26,7 +26,7 @@ function reset() {
 function createRailway() {
     let r = [
         {
-            id: 0,
+            id: "XA",
             type: BAHNHOF,
             name: "Astadt",
             tracks: 2,
@@ -39,7 +39,7 @@ function createRailway() {
             speed: 100 / 3.6,
         },
         {
-            id: 2,
+            id: "XB",
             type: BAHNHOF,
             name: "Bstadt",
             tracks: 2,
@@ -49,10 +49,10 @@ function createRailway() {
             id: 3,
             type: STRECKE,
             length: 15,
-            speed: 100 / 3.6,
+            speed: 120 / 3.6,
         },
         {
-            id: 4,
+            id: "XC",
             type: BAHNHOF,
             name: "Cstadt",
             tracks: 2,
@@ -79,14 +79,14 @@ function ConvertHumanToSeconds(human) {
     return totalSeconds;
 }
 
-function ConvertSecondsToHuman(seconds) {
+function ConvertSecondsToHuman(seconds, format = "hh:mm") {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
 
     const formattedHours = String(hours).padStart(2, '0');
     const formattedMinutes = String(minutes).padStart(2, '0');
 
-    return `${formattedHours}:${formattedMinutes}`;
+    return format.replace("hh", formattedHours).replace("mm", formattedMinutes);
 }
 
 function convertSeconds2Delay(seconds1, seconds2) {
@@ -102,22 +102,22 @@ function createTimeTables() {
         id: 1001,
         vmz: 100,
         stops: [
-            { railwayID: 0, arr: "00:55", dep: "01:00" },
-            { railwayID: 2, arr: "01:10", dep: "01:12" },
-            { railwayID: 4, arr: "01:16", dep: "01:20" },]
+            { railwayID: "XA", arr: "00:55", dep: "01:00" },
+            { railwayID: "XB", arr: "01:10", dep: "01:12" },
+            { railwayID: "XC", arr: "01:16", dep: "01:20" },]
     }, {
         id: 1002,
         vmz: 100,
         stops: [
-            { railwayID: 4, arr: "00:55", dep: "01:00" },
-            { railwayID: 2, arr: "01:06", dep: "01:07" },
-            { railwayID: 0, arr: "01:12", dep: "01:16" },]
+            { railwayID: "XC", arr: "00:55", dep: "01:00" },
+            { railwayID: "XB", arr: "01:07", dep: "01:08" },
+            { railwayID: "XA", arr: "01:12", dep: "01:17" },]
     }, {
         id: 1003,
-        vmz: 100,
+        vmz: 120,
         stops: [
-            { railwayID: 0, arr: "01:10", dep: "01:12" },
-            { railwayID: 4, arr: "01:24", dep: "01:26" },]
+            { railwayID: "XA", arr: "01:10", dep: "01:12" },
+            { railwayID: "XC", arr: "01:24", dep: "01:26" },]
     }
     ]
 
@@ -129,21 +129,11 @@ function createTimeTables() {
     return tt;
 }
 
-function createTimeTables1() {
-    return [{
-        id: 1001,
-        vmz: 100,
-        stops: [
-            { railwayID: 0, dep: 0 },
-            { railwayID: 2, dep: 400 },]
-    },
-    ]
-}
-
 function createTrains() {
     return timetables.map((tt) => {
         return {
-            position: null,
+            position: null, //position der Spitze des Zuges
+            intermediate: 0,
             nextTime: tt.stops[0].arr,
             timeTable: tt,
             timeTableIndex: 0,
@@ -221,13 +211,28 @@ function calcTrain(train) {
         if (nextPosition) {
             //console.log("nächster Abschnitt: " + nextStep.id);
             if (nextPosition.type == BAHNHOF) {
+                if (train.intermediate == 0) {//zug ist noch vor dem Bahnhof
 
-                //ist der Bahnhof frei?
-                if (nextPosition.trains.length < nextPosition.tracks) {
+                    //ist der Bahnhof frei?
+                    if (nextPosition.trains.length < nextPosition.tracks) {
+                        //Zeit in den Bahnhof zu fahren
+                        console.log("fährt in: " + nextPosition.name + " ein");
+                        train.nextTime += 30
+                        train.intermediate = 1;
+                        nextPosition.trains.push(train);
 
-                    //Zeit in den Bahnhof zu fahren
+                    }
+                    else {
+                        console.log("wartet vor: " + nextPosition.name);
+                        train.nextTime += 10;
+                        return;
+                    }
+                } else {
                     train.log.push({ railwayID: nextPosition.id, arr: train.nextTime });
-                    train.nextTime += 30
+                    if (train.position) train.position.trains.remove(train)
+                    train.position = nextPosition;
+                    train.intermediate = 0;
+
 
                     //Wenn der Bahnhof ein Planhalt ist
                     if (nextTT_Stop.railwayID == nextPosition.id) {
@@ -238,12 +243,9 @@ function calcTrain(train) {
                     }
 
 
+
                 }
-                else {
-                    console.log("wartet vor: " + nextPosition.name);
-                    train.nextTime += 10;
-                    return;
-                }
+
 
 
             } else if (nextPosition.type == STRECKE) {
@@ -251,8 +253,11 @@ function calcTrain(train) {
                     if (train.position.type == BAHNHOF)
                         train.log.last().dep = train.nextTime;
                     console.log("fährt ab mit " + convertSeconds2Delay(train.nextTime, train.timeTable.stops[train.timeTableIndex - 1].dep));
-                    train.nextTime += calculateTrainTravelTime(nextPosition.length, 1, 1, nextPosition.speed);//(nextStep.length / nextStep.speed) * 3600;
+                    train.nextTime += calculateTrainTravelTime(nextPosition.length, 1, 1,Math.min(nextPosition.speed,train.timeTable.vmz));
 
+                    if (train.position) train.position.trains.remove(train)
+                    train.position = nextPosition;
+                    train.position?.trains.push(train);
                 } else {
                     console.log("wartet in " + train.position.name);
                     train.nextTime += 10;
@@ -261,9 +266,6 @@ function calcTrain(train) {
             }
         }
 
-        if (train.position) train.position.trains.remove(train)
-        train.position = nextPosition;
-        train.position?.trains.push(train);
 
 
     } else {
@@ -330,10 +332,9 @@ function getMinTime() {
     return minTime;
 }
 
-function drawText(ctx, text, x, y, deg = 0) {
+function drawText(ctx, text, x, y, deg = 0, align = "left") {
     let fontSize = '14px';
     let fontFamily = 'Arial';
-    let align = "left"
 
     ctx.font = fontSize + ' ' + fontFamily;
     var angle = rad(deg)
@@ -345,7 +346,7 @@ function drawText(ctx, text, x, y, deg = 0) {
     let x2
     if (align == "left")
         x2 = 0;
-    else if (aligne == "center")
+    else if (align == "center")
         x2 = -ctx.measureText(text).width / 2;
     else
         x2 = -ctx.measureText(text).width;
@@ -385,8 +386,8 @@ function drawDiagramm() {
     drawRailway(ctx);
 
     trains.forEach(train => {
-        drawDataGraph(train.timeTable.stops, true);
-        drawDataGraph(train.log, false);
+        //drawDataGraph(train.timeTable.stops, true);
+        drawDataGraph(train.timeTable.id, train.log, false);
     });
 }
 
@@ -405,22 +406,41 @@ function drawRailway(ctx) {
     })
 }
 
-function drawDataGraph(data, dotted) {
+function drawDataGraph(train, data, dotted) {
     const ctx = config.ctx;
     if (dotted) ctx.setLineDash([5, 15]);
     ctx.beginPath();
 
-    data.forEach((stop, i) => {
-        if (i == 0)
-            ctx.moveTo(calcX_FromDistance(config.xMap.get(stop.railwayID)), calcY_FromTime(stop.arr));
-        else
-            ctx.lineTo(calcX_FromDistance(config.xMap.get(stop.railwayID)), calcY_FromTime(stop.arr));
+    let x, y, deg = 0, last;
+    const z = config.xMap.get(data[0].railwayID) > config.xMap.get(data[1].railwayID)
 
-        ctx.lineTo(calcX_FromDistance(config.xMap.get(stop.railwayID)), calcY_FromTime(stop.dep));
+    for (let index = 0; index < data.length; index++) {
+        const stop = data[index]
+        const nextStop = data[index + 1];
 
-    })
+        x = calcX_FromDistance(config.xMap.get(stop.railwayID));
+        y = calcY_FromTime(stop.arr);
+
+        ctx.moveTo(x, y);
+        y = calcY_FromTime(stop.dep)
+        ctx.lineTo(x, y);
+        const p1 = { x: x, y: y };
+        if (nextStop) {
+            x = calcX_FromDistance(config.xMap.get(nextStop.railwayID));
+            y = calcY_FromTime(nextStop.arr);
+            const p2 = { x: x, y: y };
+            deg = Math.atan(geometry.slope(p1,p2)) * (180 / Math.PI)
+
+            drawText(ctx, ConvertSecondsToHuman(stop.dep, "mm"), p1.x, p1.y + 15, deg, z ? "right" : "left")
+            ctx.lineTo(x, y);
+            
+            drawText(ctx, ConvertSecondsToHuman(nextStop.arr, "mm"), p2.x, p2.y - 10, deg, z ? "left" : "right")
+
+
+            drawText(ctx, train, p1.x + Math.abs(p1.x - p2.x) / (2 * (z ? -1 : 1)), p1.y + Math.abs(p2.y - p1.y) / 2, deg, "middle")
+        }
+    }    
     ctx.strokeStyle = "#0000ff"
-
 
     ctx.stroke();
     if (dotted) ctx.setLineDash([]);
