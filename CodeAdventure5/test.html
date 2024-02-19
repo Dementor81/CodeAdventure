@@ -1,169 +1,62 @@
 <!DOCTYPE html>
 <html lang="de">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <title>ANimation</title>
+        <script src="dev/jquery-3.6.1.js"></script>
+        <script src="https://unpkg.com/pencil.js@1.6.1/dist/pencil.min.js"></script>
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <title>ANimation</title>
-    <script src="dev/jquery-3.6.1.js"></script>
-    <script src="https://unpkg.com/pencil.js@1.6.1/dist/pencil.min.js"></script>
+        <script>
+            $(() => {});
 
-    <script>
-        $(() => {
+            function calculateTrainTravelTime(distance_km, accelerationRate, decelerationRate, initialSpeed_km, targetSpeed_km) {
+                
+                const distance = distance_km * 1000,initialSpeed = initialSpeed_km / 3.6,targetSpeed = targetSpeed_km / 3.6;
+                
+                // Calculate maximum achievable speed within the given distance
+                const maxAchievableSpeed = Math.sqrt(initialSpeed ** 2 + 2 * accelerationRate * distance);
 
+                // Check if the target speed is achievable
+                if (maxAchievableSpeed < targetSpeed) {                    
+                    return calculateTrainTravelTime(distance,accelerationRate,decelerationRate,initialSpeed,maxAchievableSpeed)
+                }
 
+                // Calculate acceleration time
+                const accelerationTime = (targetSpeed - initialSpeed) / accelerationRate;
 
-            const P = Pencil;
+                // Calculate deceleration time
+                const decelerationTime = initialSpeed / decelerationRate;
 
-            const gravity = new P.Position(0, 0.5);
-            const stiffness = 0.4;
-            const friction = 0.01;
+                // Calculate constant speed time
+                const constantSpeedTime = distance / targetSpeed;
 
-            // Set the scene
-            const scene = new P.Scene();
-            scene.options.fill = new P.LinearGradient([0, 0], [0, scene.height], {
-                0: "#666",
-                1: "#333",
-            });
+                // Total travel time
+                const totalTravelTime = accelerationTime + constantSpeedTime + decelerationTime;
 
-            // Set the pool
-            const radius = Math.min(scene.width, scene.height) / 2.5;
-            const pool = new P.Circle(scene.center, radius, {
-                fill: "#fff",
-            });
-            scene.add(pool);
+                return totalTravelTime;
+            }
 
-            // Return a random radius
-            const getRadius = () => P.Math.random(pool.radius / 15, pool.radius / 6);
+            // Example usage:
+            const distanceInMeters = 5; // Distance to be covered (in meters)
+            const accelerationRate = 1; // Acceleration rate (m/s²)
+            const decelerationRate = -1; // Deceleration rate (negative acceleration, m/s²)
+            const initialSpeed = 50; // Initial speed (m/s)
+            const targetSpeed = 100; // Target speed (m/s)
 
-            // List of colors
-            const colors = [
-                "#1278CC", "#5A7D99", "#30FFEF", "#FF795B", "#CC1912",
-            ];
-            // Generate some balls
-            const balls = P.RegularPolygon.getRotatingPoints(2, radius / 6).map((point) => {
-                const ball = new P.Circle(point, getRadius());
-                const third = -ball.radius / 3;
-                const gradientPosition = [third, third];
-                const color = colors[Math.floor(P.Math.random(0, colors.length))];
-                ball.options.fill = new P.RadialGradient(gradientPosition, ball.radius * 1.5, {
-                    0: (new P.Color(color)).lightness(0.7),
-                    0.7: color,
-                    1: (new P.Color(color)).lightness(0.4),
-                });
-                ball.draggable();
-                return ball;
-            });
-            pool.add(...balls);
+            const travelTime = calculateTrainTravelTime(distanceInMeters, accelerationRate, decelerationRate, initialSpeed, targetSpeed);
+            console.log(`Total travel time: ${travelTime.toFixed(2)} seconds`);
+        </script>
 
-            // Render once for the codepen thumbnail
-            scene.render();
+        <style type="text/css">
+            html,
+            body {
+                height: 100%;
+            }
+        </style>
+    </head>
 
-            const onDraw = () => {
-                // Loops through all balls
-                balls.forEach((ball) => {
-                    // Copy the current position
-                    const prev = ball.position.clone();
-
-                    if (!ball.isDragged) {
-                        // Verlet integration
-                        if (ball.previousPosition) {
-                            ball.position.add(
-                                ball.position.clone()
-                                    .subtract(ball.previousPosition)
-                                    .multiply(1 - friction),
-                            );
-                        }
-
-                        // Add gravity
-                        ball.position.add(gravity);
-
-                        // Pool boundary constraint
-                        const distanceToOrigin = ball.position.distance([0, 0]);
-                        if (distanceToOrigin > pool.radius - ball.radius) {
-                            const pushBack = ball.position.clone()
-                                .divide(distanceToOrigin)
-                                .multiply(distanceToOrigin - (pool.radius - ball.radius))
-                                .multiply(-stiffness);
-                            ball.position.add(pushBack);
-                        }
-
-                        // Collision constraint
-                        balls.forEach((other) => {
-                            if (other !== ball) {
-                                const distanceToOther = ball.position.distance(other.position);
-                                if (distanceToOther < ball.radius + other.radius) {
-                                    const pushBack = ball.position.clone()
-                                        .subtract(other.position)
-                                        .divide(distanceToOther)
-                                        .multiply(distanceToOther - (ball.radius + other.radius))
-                                        .multiply(-stiffness / 2);
-                                    ball.position.add(pushBack);
-                                    other.position.subtract(pushBack);
-                                }
-                            }
-                        });
-                    }
-
-                    // Save previous position for next frame
-                    ball.previousPosition = prev;
-                });
-            };
-
-            // Delay to give more weight to the explosion
-            setTimeout(() => {
-                // Tell the scene to render each frame and call onDraw
-                scene
-                    .startLoop()
-                    .on("draw", onDraw, true);
-            }, 300);
-        })
-    </script>
-
-    <style type="text/css">
-        html,
-        body {
-            height: 100%;
-        }
-
-        #CanvasContainer {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        #fpsDisplay {
-            position: absolute;
-            top: 10px;
-            left: 20px;
-        }
-
-        #settings {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            width: 150px;
-            height: 250px;
-            background-color: lightgrey;
-        }
-
-        #stats {
-            position: absolute;
-            top: 300px;
-            right: 20px;
-            width: 150px;
-            height: 250px;
-            background-color: lightgrey;
-            overflow: hidden;
-        }
-    </style>
-</head>
-
-<body>
-
-
-</body>
-
+    <body></body>
 </html>
