@@ -1,6 +1,7 @@
 "use strict";
 const BAHNHOF = 1;
 const STRECKE = 2;
+const HALTEPUNKT = 2;
 const MIN_STANDZEIT = 30;
 
 var railway, trains, timetables;
@@ -58,6 +59,25 @@ function createRailway() {
             type: BAHNHOF,
             name: "Ebenh.-Schäftl.",
             tracks: 2,
+        },
+        {
+            id: 4,
+            type: STRECKE,
+            sections: [
+                { length: 1.5, speed: 70 }, //26,1
+                { length: 0.1, speed: 80 }, //25,9
+            ],
+        },{
+            id: "MHSL",
+            type: HALTEPUNKT,
+            name: "Hohenschäftl. HP",
+        },{
+            id: 4,
+            type: STRECKE,
+            sections: [
+                { length: 1.5, speed: 80 }, //26,1
+                { length: 0.1, speed: 80 }, //25,9
+            ],
         },
     ];
 
@@ -165,7 +185,7 @@ function calculateTrainTravelTime(distance_km, accelerationRate, decelerationRat
 
     // Check if the target speed is achievable
     if (maxAchievableSpeed < targetSpeed) {
-        return calculateTrainTravelTime(distance_km, accelerationRate, decelerationRate, initialSpeed_km, maxAchievableSpeed*3.6, finalSpeed_km);
+        return calculateTrainTravelTime(distance_km, accelerationRate, decelerationRate, initialSpeed_km, maxAchievableSpeed * 3.6, finalSpeed_km);
     }
 
     // Calculate acceleration time
@@ -173,8 +193,13 @@ function calculateTrainTravelTime(distance_km, accelerationRate, decelerationRat
     const accelerationDistance = 0.5 * accelerationRate * accelerationTime ** 2 + initialSpeed * accelerationTime;
 
     // Calculate deceleration time
-    const decelerationTime = (targetSpeed - finalSpeed) / decelerationRate;
-    const decelerationDistance = 0.5 * decelerationRate * decelerationTime ** 2 + finalSpeed_km * decelerationTime;
+    let decelerationTime = 0;
+    let decelerationDistance = 0;
+    if (finalSpeed < targetSpeed) {
+        decelerationTime = (targetSpeed - finalSpeed) / decelerationRate;
+        decelerationDistance = 0.5 * decelerationRate * decelerationTime ** 2 + finalSpeed_km * decelerationTime;
+    }
+    if (distance - accelerationDistance - decelerationDistance < 0) debugger;
 
     // Calculate constant speed time
     const constantSpeedTime = (distance - accelerationDistance - decelerationDistance) / targetSpeed;
@@ -185,14 +210,33 @@ function calculateTrainTravelTime(distance_km, accelerationRate, decelerationRat
     return totalTravelTime;
 }
 
-function calculateTrainTravel(train, track, initialSpeed = 0, finalSpeed = 0) {
+function calculateTrainTravel(train, track, rev, initialSpeed = 60, finalSpeed = 0) {
     if (track.sections) {
         let time = 0,
             speed = 0;
-        track.sections.forEach((section) => {
-            time += calculateTrainTravelTime(section.length, 1, 1, speed, Math.min(section.speed, train.timeTable.vmz), finalSpeed);
-            speed = section.speed;
-        });
+
+        if (rev)
+            for (let index = track.sections.length - 1; index >= 0; index--) {
+                const section = track.sections[index];
+
+                time += calculateTrainTravelTime(section.length, 1, 1, speed, Math.min(section.speed, train.timeTable.vmz), index > 0 ? track.sections[index - 1].speed : finalSpeed);
+                speed = section.speed;
+            }
+        else
+            for (let index = 0; index < track.sections.length; index++) {
+                const section = track.sections[index];
+
+                time += calculateTrainTravelTime(
+                    section.length,
+                    1,
+                    1,
+                    speed,
+                    Math.min(section.speed, train.timeTable.vmz),
+                    index < track.sections.length - 1 ? track.sections[index + 1].speed : finalSpeed
+                );
+                speed = section.speed;
+            }
+
         return time;
     } else {
         return calculateTrainTravelTime(track.length, 1, 1, initialSpeed, Math.min(track.speed, train.timeTable.vmz));
@@ -221,6 +265,7 @@ function calcTrain(train) {
     console.log(train.timeTable.id + " calculating");
     let nextTT_Stop;
     let nextStopIndexOnRailway;
+    let rev;
 
     //liegen laut fahrplan noch Halte vor ihm?
     if (train.timeTableIndex < train.timeTable.stops.length) {
@@ -235,8 +280,13 @@ function calcTrain(train) {
             console.log("soll eingesetzt werden in " + nextPosition.name);
         } else {
             //rausfinden in welche Richtung wir eigentlich fahren
-            if (nextStopIndexOnRailway > getRilwayIndexById(train.position.id)) nextPosition = train.position.next;
-            else nextPosition = train.position.prev;
+            if (nextStopIndexOnRailway > getRilwayIndexById(train.position.id)) {
+                nextPosition = train.position.next;
+                rev = false;
+            } else {
+                nextPosition = train.position.prev;
+                rev = true;
+            }
         }
 
         if (nextPosition) {
@@ -277,7 +327,7 @@ function calcTrain(train) {
                 if (nextPosition.trains.length < 1) {
                     if (train.position.type == BAHNHOF) train.log.last().dep = train.nextTime;
                     console.log("fährt ab mit " + convertSeconds2Delay(train.nextTime, train.timeTable.stops[train.timeTableIndex - 1].dep));
-                    train.nextTime += calculateTrainTravel(train, nextPosition); //; calculateTrainTravelTime(nextPosition.length, 1, 1, 0, Math.min(nextPosition.speed, train.timeTable.vmz));
+                    train.nextTime += calculateTrainTravel(train, nextPosition, rev); //; calculateTrainTravelTime(nextPosition.length, 1, 1, 0, Math.min(nextPosition.speed, train.timeTable.vmz));
 
                     if (train.position) train.position.trains.remove(train);
                     train.position = nextPosition;
