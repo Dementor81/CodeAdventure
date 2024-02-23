@@ -26,18 +26,19 @@ function createRailway() {
             type: BAHNHOF,
             name: "Wolfratshausen",
             tracks: 2,
+            km: 26.3,
         },
         {
             id: 1,
             type: STRECKE,
             sections: [
-                { length: 0.2, speed: 50 }, //26,1
-                { length: 0.7, speed: 70 }, //25,9
-                { length: 0.2, speed: 60 }, //25,2
-                { length: 0.9, speed: 80 }, //25,0
-                { length: 0.7, speed: 70 }, //24,1
-                { length: 0.7, speed: 60 }, //23,4
-                { length: 0.7, speed: 80 }, //22,7
+                { km: 26.1, speed: 50 },
+                { km: 25.9, speed: 70 },
+                { km: 25.2, speed: 60 },
+                { km: 25.0, speed: 80 },
+                { km: 24.2, speed: 70 },
+                { km: 23.4, speed: 60 },
+                { km: 22.7, speed: 80 },
             ],
         },
         {
@@ -45,13 +46,14 @@ function createRailway() {
             type: BAHNHOF,
             name: "Icking",
             tracks: 2,
+            km: 21.4,
         },
         {
             id: 3,
             type: STRECKE,
             sections: [
-                { length: 1.3, speed: 100 }, //21,3
-                { length: 1.2, speed: 80 },
+                { km: 21.3, speed: 100 },
+                { km: 20.0, speed: 80 },
             ],
         },
         {
@@ -59,25 +61,25 @@ function createRailway() {
             type: BAHNHOF,
             name: "Ebenh.-Schäftl.",
             tracks: 2,
-        },
-        {
+            km: 18.2
+        }, {
             id: 4,
             type: STRECKE,
             sections: [
-                { length: 1.5, speed: 70 }, //26,1
-                { length: 0.1, speed: 80 }, //25,9
+                { km: 26.1, speed: 70 },
+                { km: 25.9, speed: 80 },
+                { km: 26.1, speed: 80 },
+                { km: 25.9, speed: 80 },
             ],
-        },{
-            id: "MHSL",
-            type: HALTEPUNKT,
-            name: "Hohenschäftl. HP",
-        },{
-            id: 4,
-            type: STRECKE,
-            sections: [
-                { length: 1.5, speed: 80 }, //26,1
-                { length: 0.1, speed: 80 }, //25,9
-            ],
+            stops: [
+                { km: 16.6, name: "Hohenschäftlern Hp", id: "MHSL" }
+            ]
+        }, {
+            id: "MBAB",
+            type: BAHNHOF,
+            name: "Baierbrunn",
+            tracks: 2,
+            km: 12.9
         },
     ];
 
@@ -86,9 +88,9 @@ function createRailway() {
         if (i < r.length - 1) bs.next = r[i + 1];
         bs.trains = [];
 
-        if (bs.sections) {
+        /* if (bs.sections) {
             bs.length = bs.sections.reduce((length, s) => (length += s.length), 0);
-        }
+        } */
     });
 
     return r;
